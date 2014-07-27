@@ -1,0 +1,73 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "John L"
+date: "Sunday, July 27, 2014"
+output: html_document
+---
+
+
+###Summary
+
+The goal of this project is to predict the manner in which target individuals exercised, based on the data and is completed as part of the requirements for the JHU Practical Machine Learning class.
+
+###Data Processing
+
+For this project, we used dat from the Human Activity Recognition data set HAR (with permission from [1]). This data set contains 5 descriptive variables and 155 measurements of 6 individuals participating in 5 different exercises labeled by the variable 'classe'. The project requires us to train a model using a provided training set and then use it to predict the exercises on a provided testing set.
+
+We first loaded the training and testing sets from the provided csv files.
+
+```{r}
+library(caret)
+library(randomForest)
+training = read.csv('pml-training.csv')
+testing = read.csv('pml-testing.csv')
+```
+
+Because there were many missing measurements, we extracted only the set of variables from the testing and training sets that did not have missing values.
+
+```{r}
+testdata = testing[,colSums(is.na(testing)) != nrow(testing)]
+savecol = names(testdata)[8:59]
+testdata = testdata[,savecol]
+traindata = training[,savecol]
+traindata = cbind(classe=training$classe,traindata)
+```
+
+We then partitioned the training data into a training set and cross-validation set.
+
+```{r}
+set.seed(123)
+inTrain = createDataPartition(traindata$classe, p = 3/4,list=FALSE)
+trdata = traindata[inTrain,]
+cvdata = traindata[-inTrain,]
+```
+
+We used a randomForest classifier on the training dataset to train a predictor model.
+
+```{r}
+set.seed(234)
+fitrf = randomForest(classe~.,data=trdata,na.action=na.omit)
+```
+
+We then applied this model to the cross-validation set.
+
+```{r}
+pred = predict(fitrf,newdata=cvdata)
+err = sum(pred==cvdata$classe)/length(pred)
+```
+
+###Results
+
+The results from fitting our random forest predictor model showed that, on the training data set, we were able to achieve an error rate of 
+
+```{r, echo=FALSE}
+fitrf
+```
+
+When we used this model to predict on the cross-validation set, we find a slightly higher error rate of `r err`. This validates our choice in the random forest prediction model. 
+
+
+
+###References
+
+[1] Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. 
